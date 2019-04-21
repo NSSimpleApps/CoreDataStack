@@ -21,6 +21,7 @@
 /* Begin PBXFileReference section */
 		A594CE832228FCB500D003BB /* ChildsListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChildsListController.swift; sourceTree = "<group>"; };
 		B51A0BFF2260DE5200CE3A1D /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
+		B547B380226C471100E2A5CD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B5D714052228298A0032491F /* CoreDataStack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoreDataStack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5D714082228298A0032491F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B5D7140A2228298A0032491F /* ParentsListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentsListController.swift; sourceTree = "<group>"; };
@@ -46,6 +47,7 @@
 		B5D713FC2228298A0032491F = {
 			isa = PBXGroup;
 			children = (
+				B547B380226C471100E2A5CD /* README.md */,
 				B5D714072228298A0032491F /* CoreDataStack */,
 				B5D714062228298A0032491F /* Products */,
 			);
