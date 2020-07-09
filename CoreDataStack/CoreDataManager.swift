@@ -27,7 +27,7 @@ public class CoreDataManager {
         self.accessQueue.async {
             if case let persistentStoreDescriptions = container.persistentStoreDescriptions, persistentStoreDescriptions.isEmpty == false {
                 for persistentStoreDescription in persistentStoreDescriptions {
-                    CoreDataManager.migrateOfNeeded(storeDescription: persistentStoreDescription, currentModel: container.managedObjectModel, configurator: configurator)
+                    Self.migrateOfNeeded(storeDescription: persistentStoreDescription, currentModel: container.managedObjectModel, configurator: configurator)
                 }
                 container.loadPersistentStores(completionHandler: { (storeDescription, error) in
                     if let error = error {
