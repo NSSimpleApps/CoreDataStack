@@ -17,28 +17,49 @@ public protocol CoreDataManagerConfigurator: AnyObject {
 
 public class CoreDataManager {
     private let persistentContainer: NSPersistentContainer
-    private let accessQueue = DispatchQueue(label: "ns.simpleapps.CoreDataManager")
+    private var isAvailable = false
+    private let condition = NSCondition()
     
     public init(configurator: CoreDataManagerConfigurator.Type) {
         let now = Date()
         let container = NSPersistentContainer(name: configurator.name, managedObjectModel: configurator.currentModel)
         self.persistentContainer = container
+        let condition = self.condition
         
-        self.accessQueue.async {
-            if case let persistentStoreDescriptions = container.persistentStoreDescriptions, persistentStoreDescriptions.isEmpty == false {
-                for persistentStoreDescription in persistentStoreDescriptions {
-                    Self.migrateOfNeeded(storeDescription: persistentStoreDescription, currentModel: container.managedObjectModel, configurator: configurator)
-                }
-                container.loadPersistentStores(completionHandler: { (storeDescription, error) in
-                    if let error = error {
-                        print(error)
-                    } else {
-                        container.viewContext.automaticallyMergesChangesFromParent = true
-                    }
-                })
-                print("Initialization time:", Date().timeIntervalSince(now))
+        if Thread.isMainThread {
+            DispatchQueue.global().async {
+                self.initStore(container: container, configurator: configurator, condition: condition, now: now)
             }
+        } else {
+            self.initStore(container: container, configurator: configurator, condition: condition, now: now)
         }
+    }
+    
+    private func initStore(container: NSPersistentContainer, configurator: CoreDataManagerConfigurator.Type,
+                           condition: NSCondition, now: Date) {
+        condition.lock()
+        if case let persistentStoreDescriptions = container.persistentStoreDescriptions, persistentStoreDescriptions.isEmpty == false {
+            self.isAvailable = false
+            
+            for persistentStoreDescription in persistentStoreDescriptions {
+                Self.migrateOfNeeded(storeDescription: persistentStoreDescription, currentModel: container.managedObjectModel, configurator: configurator)
+            }
+            container.loadPersistentStores(completionHandler: { (storeDescription, error) in
+                if let error = error {
+                    print(error)
+                } else {
+                    let viewContext = container.viewContext
+                    viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                    viewContext.automaticallyMergesChangesFromParent = true
+                }
+                print("Initialization time:", Date().timeIntervalSince(now))
+            })
+            self.isAvailable = true
+            condition.broadcast()
+        } else {
+            self.isAvailable = true
+        }
+        condition.unlock()
     }
     
     public static func setVersion(_ version: Int, forModel model: NSManagedObjectModel) {
@@ -48,25 +69,36 @@ public class CoreDataManager {
         return model.versionIdentifiers.first as? Int
     }
     
-    public func viewContext(_ block: @escaping (NSManagedObjectContext) -> Void)  {
-        self.accessQueue.async {
-            block(self.persistentContainer.viewContext)
+    public var viewContext: NSManagedObjectContext {
+        self.condition.lock()
+        while self.isAvailable == false {
+            self.condition.wait()
         }
+        let viewContext = self.persistentContainer.viewContext
+        self.condition.unlock()
+        return viewContext
     }
     
-    public func performBackgroundTask(_ block: @escaping (NSManagedObjectContext) -> Void)  {
-        self.accessQueue.async {
-            let sema = DispatchSemaphore(value: 0)
-            
-            self.persistentContainer.performBackgroundTask { (context) in
-                block(context)
-                sema.signal()
-            }
-            sema.wait()
+    public func performBackgroundTask(_ block: @escaping (NSManagedObjectContext) -> Void) {
+        self.condition.lock()
+        while self.isAvailable == false {
+            self.condition.wait()
         }
+        self.isAvailable = false
+        self.persistentContainer.performBackgroundTask { [weak self] (context) in
+            guard let sSelf = self else { return }
+            
+            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+            block(context)
+            sSelf.condition.lock()
+            sSelf.isAvailable = true
+            sSelf.condition.broadcast()
+            sSelf.condition.unlock()
+        }
+        self.condition.unlock()
     }
     public func saveContext() {
-        let context = self.persistentContainer.viewContext
+        let context = self.viewContext
         if context.hasChanges {
             do {
                 try context.save()

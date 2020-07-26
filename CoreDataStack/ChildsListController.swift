@@ -28,7 +28,10 @@ class ChildsListController: UITableViewController {
         super.viewDidLoad()
         
         let now = Date()
-        DataManager.shared.coreDataManager.viewContext { (viewContext) in
+        
+        DispatchQueue.global().async {
+            let viewContext = DataManager.shared.coreDataManager.viewContext
+            
             do {
                 guard let parent = try viewContext.existingObject(with: self.objectId) as? Parent else {
                     return

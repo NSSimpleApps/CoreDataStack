@@ -26,7 +26,9 @@ class ParentsListController: UITableViewController {
         super.viewDidLoad()
         
         let now = Date()
-        DataManager.shared.coreDataManager.viewContext { (viewContext) in
+        DispatchQueue.global().async {
+            let viewContext = DataManager.shared.coreDataManager.viewContext
+            
             do {
                 let fetchRequest: NSFetchRequest<Parent> = Parent.fetchRequest()
                 fetchRequest.fetchBatchSize = 20
