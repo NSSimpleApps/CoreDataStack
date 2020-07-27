@@ -38,24 +38,24 @@ public class CoreDataManager {
     private func initStore(container: NSPersistentContainer, configurator: CoreDataManagerConfigurator.Type,
                            condition: NSCondition, now: Date) {
         condition.lock()
+        let name = container.name
         if case let persistentStoreDescriptions = container.persistentStoreDescriptions, persistentStoreDescriptions.isEmpty == false {
             self.isAvailable = false
             
             for persistentStoreDescription in persistentStoreDescriptions {
+                persistentStoreDescription.shouldAddStoreAsynchronously = true
                 Self.migrateOfNeeded(storeDescription: persistentStoreDescription, currentModel: container.managedObjectModel, configurator: configurator)
             }
             container.loadPersistentStores(completionHandler: { (storeDescription, error) in
                 if let error = error {
                     print(error)
-                } else {
-                    let viewContext = container.viewContext
-                    viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-                    viewContext.automaticallyMergesChangesFromParent = true
                 }
-                print("Initialization time:", Date().timeIntervalSince(now))
+                print("Initialization time \(name):", Date().timeIntervalSince(now))
+                condition.lock()
+                self.isAvailable = true
+                condition.broadcast()
+                condition.unlock()
             })
-            self.isAvailable = true
-            condition.broadcast()
         } else {
             self.isAvailable = true
         }
@@ -75,8 +75,24 @@ public class CoreDataManager {
             self.condition.wait()
         }
         let viewContext = self.persistentContainer.viewContext
+        if viewContext.automaticallyMergesChangesFromParent == false {
+            viewContext.automaticallyMergesChangesFromParent = true
+            viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        }
         self.condition.unlock()
         return viewContext
+    }
+    
+    public var newBackgroundContext: NSManagedObjectContext {
+        self.condition.lock()
+        while self.isAvailable == false {
+            self.condition.wait()
+        }
+        let newBackgroundContext = self.persistentContainer.newBackgroundContext()
+        newBackgroundContext.automaticallyMergesChangesFromParent = true
+        newBackgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        self.condition.unlock()
+        return newBackgroundContext
     }
     
     public func performBackgroundTask(_ block: @escaping (NSManagedObjectContext) -> Void) {
