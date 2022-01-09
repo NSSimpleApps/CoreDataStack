@@ -109,7 +109,7 @@ class ParentsListController: UITableViewController {
         let count = self.fetchedResultsController?.sections?.count ?? 0
         if count == 0 {
             if self.shouldShowActivity {
-                let activity = UIActivityIndicatorView(style: .gray)
+                let activity = UIActivityIndicatorView(style: .medium)
                 activity.startAnimating()
                 tableView.backgroundView = activity
             } else {

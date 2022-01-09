@@ -110,7 +110,7 @@ class ChildsListController: UITableViewController {
         if count == 0 {
             let backgroundView: UIView
             if self.shouldShowActivity {
-                let activityIndicatorView = UIActivityIndicatorView(style: .gray)
+                let activityIndicatorView = UIActivityIndicatorView(style: .medium)
                 activityIndicatorView.startAnimating()
                 backgroundView = activityIndicatorView
             } else {
